@@ -1,0 +1,27 @@
+{
+  "name": "wakeupcall",
+  "version": "1.0.0",
+  "description": "Local-first nudge bot with Discord ingest + cron runner",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "bot": "node src/bot/index.js",
+    "runner": "node src/runner/index.js",
+    "migrate": "node src/db/migrate.js",
+    "migrate:rollback": "node src/db/migrateDown.js",
+    "migrate:rollback:all": "node src/db/migrateDown.js --all"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.2",
+    "dotenv": "^16.6.1",
+    "luxon": "^3.7.2",
+    "mysql2": "^3.15.2",
+    "openai": "^6.4.0",
+    "sequelize": "^6.37.7",
+    "umzug": "^3.8.2",
+    "zod": "^4.1.5"
+  }
+}
