@@ -52,12 +52,17 @@ function buildSystemPrompt({ commandType, settings, timezone, nowIso, commandTex
     "8) links[] child_index must reference tasks array index.",
     "9) Default to a single top-level task for nudge unless the user explicitly asks for multiple tasks (e.g. 'also', 'another task', 'separately').",
     "10) If a sentence looks like a dependency or prerequisite for the main action, model it as a subtask, not another top-level task.",
-    "11) Temporal policy: stretch-to-fill. Make execution windows as wide as reasonably possible within user-stated bounds; do not collapse vague periods into short slots.",
-    "12) If user says 'today', set high priority (use 10) and set window end to configured quiet_hours_start of the same local day.",
-    "13) If user says 'this month', set window start to tomorrow 00:00 local time and window end to the last day of current month 23:59:59 local time.",
-    "14) If user says 'next week' without specific day/time, set window to Monday 00:00 through Friday 23:59:59 of next week in local timezone.",
-    "15) Only choose short windows when user gives explicit short constraints.",
-    "16) Do not include secrets."
+    "11) memory_context is for minimal practical advice, not categorization labels/tags.",
+    "12) memory_context should be either null (if trivial/self-explanatory) OR 1-4 short actionable lines (safety, tools, pitfalls, order of steps).",
+    "13) category should be a short lower-kebab-case label describing task domain, or null if unclear.",
+    "14) Prefer reusable practical categories such as chores, home-maintenance, office-maintenance, fatherhood, marriage, health, finance, admin, learning.",
+    "15) Never put category labels inside memory_context.",
+    "16) Temporal policy: stretch-to-fill. Make execution windows as wide as reasonably possible within user-stated bounds; do not collapse vague periods into short slots.",
+    "17) If user says 'today', set high priority (use 10) and set window end to configured quiet_hours_start of the same local day.",
+    "18) If user says 'this month', set window start to tomorrow 00:00 local time and window end to the last day of current month 23:59:59 local time.",
+    "19) If user says 'next week' without specific day/time, set window to Monday 00:00 through Friday 23:59:59 of next week in local timezone.",
+    "20) Only choose short windows when user gives explicit short constraints.",
+    "21) Do not include secrets."
   ].join("\n");
 }
 

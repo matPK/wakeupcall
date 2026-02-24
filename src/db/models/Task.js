@@ -50,6 +50,10 @@ function initTask(sequelize) {
         allowNull: true,
         field: "memory_context"
       },
+      category: {
+        type: DataTypes.STRING(64),
+        allowNull: true
+      },
       source: {
         type: DataTypes.STRING(32),
         allowNull: false,

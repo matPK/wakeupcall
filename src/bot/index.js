@@ -1,11 +1,12 @@
 const { sequelize } = require("../db/models");
-const { assertEnvVars } = require("../config/env");
+const { assertEnvVars, assertDiscordAllowListConfigured } = require("../config/env");
 const logger = require("../utils/logger");
 const { DiscordInboxProvider } = require("../providers/discord/DiscordInboxProvider");
 const { CommandHandler } = require("./commandHandler");
 
 async function startBot() {
-  assertEnvVars(["DISCORD_BOT_TOKEN", "DISCORD_OWNER_ID", "OPENAI_API_KEY"]);
+  assertEnvVars(["DISCORD_BOT_TOKEN", "OPENAI_API_KEY"]);
+  assertDiscordAllowListConfigured();
   await sequelize.authenticate();
   logger.info("Database connection OK for bot.");
 

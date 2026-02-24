@@ -22,11 +22,11 @@
 4. Open generated URL and authorize bot to at least one server (required so bot account is active).
 5. Open a DM with your bot user.
 
-## 4. Get your Discord user ID (owner gate)
+## 4. Get allowed Discord user IDs
 
 1. Discord `User Settings -> Advanced -> Developer Mode` = ON.
 2. Right-click your username/avatar -> `Copy User ID`.
-3. Put this in `.env` as `DISCORD_OWNER_ID`.
+3. Put your own ID in `.env` as `DISCORD_OWNER_ID` (fallback) and/or add IDs to `DISCORD_ALLOWED_USER_IDS`.
 
 ## 5. Create `.env`
 
@@ -34,6 +34,7 @@ Create `.env` in project root with these keys:
 
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_OWNER_ID`
+- `DISCORD_ALLOWED_USER_IDS` (optional, comma-separated; if set, controls who can use the bot)
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` (optional; default `gpt-5-nano`)
 - `DB_NAME`
@@ -66,13 +67,14 @@ npm run migrate
 npm run bot
 ```
 
-DM commands to the bot from your owner account only:
+DM commands to the bot from allowlisted accounts:
 
 - `help`
 - `list`
 - `nudge: ...`
 - `snooze: <id> ...`
 - `done: <id>`
+- `explain: <id>`
 - `config: ...`
 
 ## 9. Run runner manually

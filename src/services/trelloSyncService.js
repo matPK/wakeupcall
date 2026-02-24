@@ -13,6 +13,7 @@ function buildCardDescription(task) {
   const lines = [
     `Wakeupcall Task ID: ${task.id}`,
     `Status: ${task.status}`,
+    `Category: ${task.category || "uncategorized"}`,
     `Priority: ${task.priority}`,
     `Window Start (UTC): ${task.nudgeWindowStart ? task.nudgeWindowStart.toISOString() : "none"}`,
     `Window End (UTC): ${task.nudgeWindowEnd ? task.nudgeWindowEnd.toISOString() : "open-ended"}`,

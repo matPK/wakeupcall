@@ -6,7 +6,8 @@ const {
   listPendingTopLevelTasks,
   markTaskDoneWithDescendants,
   updateTaskWindowBySnooze,
-  getPendingTaskById
+  getPendingTaskById,
+  getTaskById
 } = require("../services/taskService");
 const { Setting } = require("../db/models");
 const { ALLOWED_SETTING_KEYS } = require("../db/settingsDefaults");
@@ -14,6 +15,7 @@ const { TaskCompiler, CompilerError } = require("../compiler/taskCompiler");
 const logger = require("../utils/logger");
 
 const EXPLICIT_MULTI_TASK_CUE = /\b(also|another task|another one|separately|separate task|in addition|additionally|plus)\b/i;
+const CATEGORY_LIKE_MEMORY_CONTEXT = /^[a-z0-9_-]+$/i;
 
 function hasExplicitMultiTaskCue(text) {
   return EXPLICIT_MULTI_TASK_CUE.test(String(text || ""));
@@ -59,6 +61,9 @@ class CommandHandler {
       case "done":
         await this.handleDone(message.channelId, parsed.taskId);
         return;
+      case "explain":
+        await this.handleExplain(message.channelId, parsed.taskId);
+        return;
       case "nudge":
         await this.handleNudge(message, parsed.text);
         return;
@@ -83,6 +88,7 @@ class CommandHandler {
       "nudge: fix sink, also schedule dentist",
       "snooze: 12 2h",
       "done: 12",
+      "explain: 12",
       "config: repeat every 45m and quiet hours 22:30-07:00",
       "config: nudge mode single"
     ].join("\n");
@@ -130,8 +136,33 @@ class CommandHandler {
 
     await this.inboxProvider.reply(
       channelId,
-      `Done [${taskId}] (+${Math.max(0, result.updatedCount - 1)} subtasks).`
+      `Done [${taskId}] (+${Math.max(0, result.updatedCount - 1)} subtasks). Good job!`
     );
+  }
+
+  async handleExplain(channelId, taskId) {
+    if (!Number.isInteger(taskId) || taskId <= 0) {
+      await this.inboxProvider.reply(channelId, "Use: explain: <taskId>");
+      return;
+    }
+
+    const task = await getTaskById(taskId);
+    if (!task) {
+      await this.inboxProvider.reply(channelId, `Task ${taskId} not found.`);
+      return;
+    }
+
+    const context = typeof task.memoryContext === "string" ? task.memoryContext.trim() : "";
+    const looksLikeCategoryToken = context && !context.includes("\n") && context.split(/\s+/).length <= 3 && CATEGORY_LIKE_MEMORY_CONTEXT.test(context);
+    if (!context || looksLikeCategoryToken) {
+      const categoryLine = task.category ? `\nCategory: ${task.category}` : "";
+      await this.inboxProvider.reply(channelId, `Explain [${taskId}]: no extra notes saved. Task looks self-explanatory.${categoryLine}`);
+      return;
+    }
+
+    const clipped = context.length > 1700 ? `${context.slice(0, 1700)}...` : context;
+    const categoryLine = task.category ? `Category: ${task.category}\n` : "";
+    await this.inboxProvider.reply(channelId, `Explain [${taskId}] ${task.title}\n${categoryLine}${clipped}`);
   }
 
   async handleNudge(message, text) {
@@ -176,7 +207,10 @@ class CommandHandler {
     }
 
     const created = await createTasksFromCompilerOutput(compiled, message);
-    const lines = created.map((task) => `[${task.id}] ${task.title}`);
+    const lines = created.map((task) => {
+      const categorySuffix = task.category ? ` {${task.category}}` : "";
+      return `[${task.id}] ${task.title}${categorySuffix}`;
+    });
     const topLevelCount = created.filter((task) => task.parentTaskId === null).length;
     const subtaskCount = created.length - topLevelCount;
     const topLevelTasks = created.filter((task) => task.parentTaskId === null);

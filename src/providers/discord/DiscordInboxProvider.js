@@ -22,7 +22,7 @@ class DiscordInboxProvider {
         if (message.author.bot) {
           return;
         }
-        if (message.author.id !== env.discordOwnerId) {
+        if (!env.discordAllowedUserIds.includes(message.author.id)) {
           return;
         }
         if (message.channel.type !== ChannelType.DM) {

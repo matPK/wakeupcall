@@ -22,9 +22,28 @@ function parsePort(name, fallback) {
   return parsed;
 }
 
+function parseIdList(value) {
+  if (!value) {
+    return [];
+  }
+  return String(value)
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+const discordOwnerId = process.env.DISCORD_OWNER_ID || "";
+const allowedFromEnv = parseIdList(process.env.DISCORD_ALLOWED_USER_IDS || "");
+const discordAllowedUserIds = unique(discordOwnerId ? [discordOwnerId, ...allowedFromEnv] : allowedFromEnv);
+
 const env = {
   discordBotToken: process.env.DISCORD_BOT_TOKEN || "",
-  discordOwnerId: process.env.DISCORD_OWNER_ID || "",
+  discordOwnerId,
+  discordAllowedUserIds,
   openAiApiKey: process.env.OPENAI_API_KEY || "",
   openAiModel: process.env.OPENAI_MODEL || "gpt-5-nano",
   db: {
@@ -50,4 +69,10 @@ function assertEnvVars(names) {
   }
 }
 
-module.exports = { env, assertEnvVars };
+function assertDiscordAllowListConfigured() {
+  if (!Array.isArray(env.discordAllowedUserIds) || env.discordAllowedUserIds.length === 0) {
+    throw new Error("Missing Discord allowlist. Set DISCORD_ALLOWED_USER_IDS or DISCORD_OWNER_ID.");
+  }
+}
+
+module.exports = { env, assertEnvVars, assertDiscordAllowListConfigured };

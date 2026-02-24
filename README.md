@@ -2,7 +2,7 @@
 
 Local-first nudge bot with two processes:
 
-1. Discord ingest bot (Gateway, DM-only, owner-gated)
+1. Discord ingest bot (Gateway, DM-only, allowlist-gated)
 2. Nudge runner (single-shot, cron-friendly, no OpenAI calls)
 3. Optional Trello sync (runner-driven)
 
@@ -25,6 +25,7 @@ Processed commands (case-insensitive):
 - `nudge: <free text>` (AI-backed)
 - `snooze: <taskId> <free text>` (AI-backed)
 - `done: <taskId>`
+- `explain: <taskId>` (no AI): return stored `memoryContext` notes for that task
 - `config: <free text>` (AI-backed)
 
 All other messages are ignored.
@@ -34,10 +35,12 @@ Nudge interpretation rule:
 - By default, one message creates one top-level task.
 - Use explicit split words like `also`, `another task`, or `separately` to create multiple top-level tasks.
 - Follow-up/prep actions are treated as subtasks by default.
+- The compiler may also infer a short task `category` label.
 
-### DM-only owner gate
+### DM-only allowlist gate
 
-- Bot processes only DM messages from `DISCORD_OWNER_ID`.
+- Bot processes only DM messages from users in `DISCORD_ALLOWED_USER_IDS`.
+- If `DISCORD_ALLOWED_USER_IDS` is empty, `DISCORD_OWNER_ID` is used as fallback allowlist.
 - Messages from other users are ignored.
 - Guild/server messages are ignored.
 
@@ -62,6 +65,7 @@ Seeded defaults:
 
 - `id` int PK auto increment
 - `parent_task_id` int nullable FK -> `tasks.id` with `ON DELETE CASCADE`
+- `category` varchar(64) nullable (AI-inferred task category, e.g. `chores`, `home-maintenance`)
 - other fields per spec (`status`, windows, nudge text, metadata, counters, timestamps)
 
 Indexes:
@@ -82,7 +86,8 @@ A task is nudgable when:
 - only top-level tasks are selected for nudging
 - pending subtasks are included in the top-level nudge message
 - nudge dispatch mode:
-  - `single`: send only the highest-priority eligible task each run
+- `single`: send only the highest-priority eligible task each run
+  - in multi-user mode, this means one top-priority task per target user each run
   - `all`: send every eligible task each run
 
 On send:

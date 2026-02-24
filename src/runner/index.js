@@ -26,8 +26,26 @@ function buildNudgeMessage(task) {
   return `${header}\nSubtasks:\n${lines.join("\n")}`;
 }
 
+function resolveTargetUserId(task) {
+  return task.sourceUserId || env.discordOwnerId || null;
+}
+
+function selectTasksForSingleMode(nudgableTasks) {
+  const selectedByTarget = new Map();
+  for (const task of nudgableTasks) {
+    const targetUserId = resolveTargetUserId(task);
+    if (!targetUserId) {
+      continue;
+    }
+    if (!selectedByTarget.has(targetUserId)) {
+      selectedByTarget.set(targetUserId, task);
+    }
+  }
+  return [...selectedByTarget.values()];
+}
+
 async function runOnce() {
-  assertEnvVars(["DISCORD_BOT_TOKEN", "DISCORD_OWNER_ID"]);
+  assertEnvVars(["DISCORD_BOT_TOKEN"]);
   await sequelize.authenticate();
   const settings = await getSettingsMap();
   const timezone = settings.timezone || "America/Sao_Paulo";
@@ -52,15 +70,20 @@ async function runOnce() {
       logger.info("Runner found no nudgable tasks.");
     } else {
       const nudgeMode = resolveNudgeMode(settings.nudge_mode);
-      const tasksToSend = nudgeMode === "all" ? nudgableTasks : [nudgableTasks[0]];
+      const tasksToSend = nudgeMode === "all" ? nudgableTasks : selectTasksForSingleMode(nudgableTasks);
       logger.info(`Runner nudge mode: ${nudgeMode}. Candidate=${nudgableTasks.length}, sending=${tasksToSend.length}`);
 
       const notifier = new DiscordNotifierProvider();
       try {
         for (const task of tasksToSend) {
           try {
+            const targetUserId = resolveTargetUserId(task);
+            if (!targetUserId) {
+              logger.warn(`Skipping nudge for task ${task.id}: no target user (sourceUserId and DISCORD_OWNER_ID both missing).`);
+              continue;
+            }
             const nudgeMessage = buildNudgeMessage(task);
-            await notifier.send(env.discordOwnerId, nudgeMessage);
+            await notifier.send(targetUserId, nudgeMessage);
             await markTaskNudged(task.id);
             sentCount += 1;
           } catch (err) {

@@ -25,6 +25,43 @@ function buildChildLinkMap(links) {
   return map;
 }
 
+function normalizeMemoryContext(input) {
+  const text = typeof input === "string" ? input.trim() : "";
+  if (!text) {
+    return null;
+  }
+
+  if (/^(none|null|n\/a|self[- ]?explanatory|self explanatory)$/i.test(text)) {
+    return null;
+  }
+
+  const looksLikeCategoryToken =
+    !text.includes("\n") && text.split(/\s+/).length <= 3 && /^[a-z0-9_-]+$/i.test(text);
+  if (looksLikeCategoryToken) {
+    return null;
+  }
+
+  return text.slice(0, 1200);
+}
+
+function normalizeCategory(input) {
+  const raw = typeof input === "string" ? input.trim() : "";
+  if (!raw) {
+    return null;
+  }
+
+  const slug = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+
+  if (!slug) {
+    return null;
+  }
+  return slug;
+}
+
 async function createTasksFromCompilerOutput(output, messageContext) {
   const tasks = output.tasks || [];
   const linksMap = buildChildLinkMap(output.links || []);
@@ -90,7 +127,8 @@ async function createSingleTask({ taskInput, parentTaskId, now, transaction, mes
       nudgeWindowStart: startDate,
       nudgeWindowEnd: endDate,
       nudgeText: taskInput.nudge_text || "",
-      memoryContext: taskInput.memory_context || null,
+      memoryContext: normalizeMemoryContext(taskInput.memory_context),
+      category: normalizeCategory(taskInput.category),
       source: "discord",
       sourceMessageId: messageContext.messageId || null,
       sourceChannelId: messageContext.channelId || null,
@@ -304,6 +342,10 @@ async function getPendingTaskById(taskId) {
   });
 }
 
+async function getTaskById(taskId) {
+  return Task.findByPk(taskId);
+}
+
 module.exports = {
   createTasksFromCompilerOutput,
   listPendingTopLevelTasks,
@@ -311,5 +353,6 @@ module.exports = {
   updateTaskWindowBySnooze,
   findNudgableTasks,
   markTaskNudged,
-  getPendingTaskById
+  getPendingTaskById,
+  getTaskById
 };

@@ -8,6 +8,7 @@ const TaskSchema = z
     nudge_window_end: z.string().nullable(),
     nudge_text: z.string(),
     memory_context: z.string().nullable(),
+    category: z.string().nullable().default(null),
     parent_ref: z.string().nullable()
   })
   .strict();
@@ -81,6 +82,7 @@ const COMPILER_JSON_SCHEMA = {
           nudge_window_end: { anyOf: [{ type: "string" }, { type: "null" }] },
           nudge_text: { type: "string" },
           memory_context: { anyOf: [{ type: "string" }, { type: "null" }] },
+          category: { anyOf: [{ type: "string" }, { type: "null" }] },
           parent_ref: { anyOf: [{ type: "string" }, { type: "null" }] }
         },
         required: [
@@ -90,6 +92,7 @@ const COMPILER_JSON_SCHEMA = {
           "nudge_window_end",
           "nudge_text",
           "memory_context",
+          "category",
           "parent_ref"
         ]
       }

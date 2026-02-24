@@ -16,6 +16,11 @@ function parseIncomingCommand(text) {
     return { type: "done", taskId: Number(doneMatch[1]) };
   }
 
+  const explainMatch = /^explain:\s*(\d+)\s*$/i.exec(content);
+  if (explainMatch) {
+    return { type: "explain", taskId: Number(explainMatch[1]) };
+  }
+
   const nudgeMatch = /^nudge:\s+(.+)$/i.exec(content);
   if (nudgeMatch) {
     return { type: "nudge", text: nudgeMatch[1].trim() };
