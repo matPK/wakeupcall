@@ -7,6 +7,13 @@ const { isInQuietHours, nowUtc } = require("../utils/time");
 const { DiscordNotifierProvider } = require("../providers/discord/DiscordNotifierProvider");
 const logger = require("../utils/logger");
 
+function renderTaskTitle(task) {
+  const raw = String(task && task.title ? task.title : "");
+  const withId = raw.replace(/\{\{\s*id\s*\}\}/gi, String(task && task.id ? task.id : ""));
+  const normalized = withId.replace(/\s+/g, " ").trim();
+  return normalized || "Untitled task";
+}
+
 function resolveNudgeMode(rawValue) {
   const normalized = String(rawValue || "single").trim().toLowerCase();
   return normalized === "all" ? "all" : "single";
@@ -14,7 +21,7 @@ function resolveNudgeMode(rawValue) {
 
 function buildNudgeMessage(task) {
   const base = String(task.nudgeText || "").trim();
-  const fallback = `Nudge [${task.id}]: ${task.title}. Reply: done: ${task.id} | snooze: ${task.id} 2h`;
+  const fallback = `Nudge [${task.id}]: ${renderTaskTitle(task)}. Reply: done: ${task.id} | snooze: ${task.id} 2h`;
   const header = base || fallback;
 
   const subtasks = Array.isArray(task.pendingSubtasks) ? task.pendingSubtasks : [];

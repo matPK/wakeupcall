@@ -2,6 +2,15 @@ const { Op } = require("sequelize");
 const { sequelize, Task } = require("../db/models");
 const { parseIsoToDate, nowUtc, isNowWithinWindow, toDateTimeUtc, addMinutes } = require("../utils/time");
 
+function normalizeTaskTitle(inputText) {
+  const raw = String(inputText || "")
+    .replace(/\{\{\s*id\s*\}\}/gi, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (raw || "Untitled task").slice(0, 255);
+}
+
 function normalizeNudgeText(inputText, id, title) {
   const base = String(inputText || "").trim().replace(/\{\{\s*id\s*\}\}/gi, String(id));
   const fallback = `Nudge [${id}]: ${title}. Reply: done: ${id} | snooze: ${id} 2h`;
@@ -121,7 +130,7 @@ async function createSingleTask({ taskInput, parentTaskId, now, transaction, mes
   const createdTask = await Task.create(
     {
       parentTaskId,
-      title: String(taskInput.title || "").slice(0, 255).trim() || "Untitled task",
+      title: normalizeTaskTitle(taskInput.title),
       status: "pending",
       priority: Number.isFinite(taskInput.priority) ? Math.trunc(taskInput.priority) : 0,
       nudgeWindowStart: startDate,

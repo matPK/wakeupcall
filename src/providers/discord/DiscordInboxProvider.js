@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials, ChannelType } = require("discord.js");
+const { Client, GatewayIntentBits, Partials, ChannelType, ActivityType } = require("discord.js");
 const { env } = require("../../config/env");
 const logger = require("../../utils/logger");
 
@@ -15,6 +15,22 @@ class DiscordInboxProvider {
     this.client.on("clientReady", () => {
       this.ready = true;
       logger.info(`Discord inbox connected as ${this.client.user.tag}`);
+      try {
+        this.client.user.setPresence({
+          status: "online",
+          activities: [{ name: "your nudges", type: ActivityType.Watching }]
+        });
+      } catch (err) {
+        logger.warn("Failed to set Discord presence", err.message);
+      }
+    });
+
+    this.client.on("shardDisconnect", (event, id) => {
+      logger.warn(`Discord shard disconnected (id=${id}, code=${event && event.code ? event.code : "unknown"})`);
+    });
+
+    this.client.on("shardResume", (id) => {
+      logger.info(`Discord shard resumed (id=${id})`);
     });
 
     this.client.on("messageCreate", async (message) => {

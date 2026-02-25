@@ -47,6 +47,7 @@ function buildSystemPrompt({ commandType, settings, timezone, nowIso, commandTex
     "3) intent=config for config command.",
     "4) If ambiguous, use intent=clarify and fill clarify_question.",
     "5) tasks[].nudge_text must include {{id}} token and include done/snooze hint.",
+    "5b) Never include {{id}} in tasks[].title, only in tasks[].nudge_text.",
     "6) For create intent, task windows must be ISO8601 with timezone.",
     "7) Respect settings.max_subtasks, do not exceed it.",
     "8) links[] child_index must reference tasks array index.",

@@ -17,6 +17,13 @@ const logger = require("../utils/logger");
 const EXPLICIT_MULTI_TASK_CUE = /\b(also|another task|another one|separately|separate task|in addition|additionally|plus)\b/i;
 const CATEGORY_LIKE_MEMORY_CONTEXT = /^[a-z0-9_-]+$/i;
 
+function renderTaskTitle(task) {
+  const raw = String(task && task.title ? task.title : "");
+  const withId = raw.replace(/\{\{\s*id\s*\}\}/gi, String(task && task.id ? task.id : ""));
+  const normalized = withId.replace(/\s+/g, " ").trim();
+  return normalized || "Untitled task";
+}
+
 function hasExplicitMultiTaskCue(text) {
   return EXPLICIT_MULTI_TASK_CUE.test(String(text || ""));
 }
@@ -108,7 +115,7 @@ class CommandHandler {
     const lines = tasks.map((task) => {
       const start = formatWindowForUser(task.nudgeWindowStart, timezone);
       const end = formatWindowForUser(task.nudgeWindowEnd, timezone);
-      return `[${task.id}] ${task.title} | ${start} -> ${end}`;
+      return `[${task.id}] ${renderTaskTitle(task)} | ${start} -> ${end}`;
     });
 
     await this.inboxProvider.reply(channelId, lines.join("\n"));
@@ -162,7 +169,7 @@ class CommandHandler {
 
     const clipped = context.length > 1700 ? `${context.slice(0, 1700)}...` : context;
     const categoryLine = task.category ? `Category: ${task.category}\n` : "";
-    await this.inboxProvider.reply(channelId, `Explain [${taskId}] ${task.title}\n${categoryLine}${clipped}`);
+    await this.inboxProvider.reply(channelId, `Explain [${taskId}] ${renderTaskTitle(task)}\n${categoryLine}${clipped}`);
   }
 
   async handleNudge(message, text) {
@@ -209,7 +216,7 @@ class CommandHandler {
     const created = await createTasksFromCompilerOutput(compiled, message);
     const lines = created.map((task) => {
       const categorySuffix = task.category ? ` {${task.category}}` : "";
-      return `[${task.id}] ${task.title}${categorySuffix}`;
+      return `[${task.id}] ${renderTaskTitle(task)}${categorySuffix}`;
     });
     const topLevelCount = created.filter((task) => task.parentTaskId === null).length;
     const subtaskCount = created.length - topLevelCount;
