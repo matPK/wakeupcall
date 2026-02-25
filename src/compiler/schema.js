@@ -7,7 +7,7 @@ const TaskSchema = z
     nudge_window_start: z.string(),
     nudge_window_end: z.string().nullable(),
     nudge_text: z.string(),
-    memory_context: z.string().nullable(),
+    memory_context: z.string().nullable().optional().default(null),
     category: z.string().nullable().default(null),
     parent_ref: z.string().nullable()
   })
@@ -91,7 +91,6 @@ const COMPILER_JSON_SCHEMA = {
           "nudge_window_start",
           "nudge_window_end",
           "nudge_text",
-          "memory_context",
           "category",
           "parent_ref"
         ]
