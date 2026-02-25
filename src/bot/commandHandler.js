@@ -63,13 +63,13 @@ class CommandHandler {
         await this.replyHelp(message.channelId);
         return;
       case "list":
-        await this.replyList(message.channelId);
+        await this.replyList(message.channelId, message.authorId);
         return;
       case "done":
-        await this.handleDone(message.channelId, parsed.taskId);
+        await this.handleDone(message.channelId, message.authorId, parsed.taskId);
         return;
       case "explain":
-        await this.handleExplain(message.channelId, parsed.taskId);
+        await this.handleExplain(message.channelId, message.authorId, parsed.taskId);
         return;
       case "nudge":
         await this.handleNudge(message, parsed.text);
@@ -102,10 +102,10 @@ class CommandHandler {
     await this.inboxProvider.reply(channelId, text);
   }
 
-  async replyList(channelId) {
+  async replyList(channelId, authorId) {
     const settings = await getSettingsMap();
     const timezone = settings.timezone || "America/Sao_Paulo";
-    const tasks = await listPendingTopLevelTasks();
+    const tasks = await listPendingTopLevelTasks(authorId);
 
     if (tasks.length === 0) {
       await this.inboxProvider.reply(channelId, "No pending top-level tasks.");
@@ -121,13 +121,13 @@ class CommandHandler {
     await this.inboxProvider.reply(channelId, lines.join("\n"));
   }
 
-  async handleDone(channelId, taskId) {
+  async handleDone(channelId, authorId, taskId) {
     if (!Number.isInteger(taskId) || taskId <= 0) {
       await this.inboxProvider.reply(channelId, "Use: done: <taskId>");
       return;
     }
 
-    const result = await markTaskDoneWithDescendants(taskId);
+    const result = await markTaskDoneWithDescendants(taskId, authorId);
     if (!result.found) {
       await this.inboxProvider.reply(channelId, `Task ${taskId} not found.`);
       return;
@@ -147,13 +147,13 @@ class CommandHandler {
     );
   }
 
-  async handleExplain(channelId, taskId) {
+  async handleExplain(channelId, authorId, taskId) {
     if (!Number.isInteger(taskId) || taskId <= 0) {
       await this.inboxProvider.reply(channelId, "Use: explain: <taskId>");
       return;
     }
 
-    const task = await getTaskById(taskId);
+    const task = await getTaskById(taskId, authorId);
     if (!task) {
       await this.inboxProvider.reply(channelId, `Task ${taskId} not found.`);
       return;
@@ -246,7 +246,7 @@ class CommandHandler {
       return;
     }
 
-    const task = await getPendingTaskById(taskId);
+    const task = await getPendingTaskById(taskId, message.authorId);
     if (!task) {
       await this.inboxProvider.reply(message.channelId, `Task ${taskId} not found or not pending.`);
       return;
@@ -298,7 +298,7 @@ class CommandHandler {
       return;
     }
 
-    const updated = await updateTaskWindowBySnooze(taskId, snoozePayload);
+    const updated = await updateTaskWindowBySnooze(taskId, snoozePayload, message.authorId);
     if (!updated || !updated.updated) {
       await this.inboxProvider.reply(message.channelId, `Task ${taskId} could not be snoozed.`);
       return;

@@ -71,6 +71,16 @@ function normalizeCategory(input) {
   return slug;
 }
 
+function withSourceUserFilter(where, sourceUserId) {
+  if (!sourceUserId) {
+    return where;
+  }
+  return {
+    ...where,
+    sourceUserId
+  };
+}
+
 async function createTasksFromCompilerOutput(output, messageContext) {
   const tasks = output.tasks || [];
   const linksMap = buildChildLinkMap(output.links || []);
@@ -155,12 +165,15 @@ async function createSingleTask({ taskInput, parentTaskId, now, transaction, mes
   return createdTask;
 }
 
-async function listPendingTopLevelTasks(limit = 30) {
+async function listPendingTopLevelTasks(sourceUserId, limit = 30) {
   return Task.findAll({
-    where: {
-      status: "pending",
-      parentTaskId: null
-    },
+    where: withSourceUserFilter(
+      {
+        status: "pending",
+        parentTaskId: null
+      },
+      sourceUserId
+    ),
     order: [
       ["priority", "DESC"],
       ["id", "ASC"]
@@ -169,20 +182,31 @@ async function listPendingTopLevelTasks(limit = 30) {
   });
 }
 
-async function markTaskDoneWithDescendants(taskId) {
-  const task = await Task.findByPk(taskId, { attributes: ["id"] });
+async function markTaskDoneWithDescendants(taskId, sourceUserId) {
+  const task = await Task.findOne({
+    attributes: ["id"],
+    where: withSourceUserFilter(
+      {
+        id: taskId
+      },
+      sourceUserId
+    )
+  });
   if (!task) {
     return { found: false, alreadyDone: false, rootWasDone: false, updatedCount: 0, ids: [] };
   }
 
-  const idsToUpdate = await collectDescendantIds(task.id);
+  const idsToUpdate = await collectDescendantIds(task.id, sourceUserId);
   const rows = await Task.findAll({
     attributes: ["id", "status"],
-    where: {
-      id: {
-        [Op.in]: idsToUpdate
-      }
-    }
+    where: withSourceUserFilter(
+      {
+        id: {
+          [Op.in]: idsToUpdate
+        }
+      },
+      sourceUserId
+    )
   });
 
   const statusById = new Map(rows.map((row) => [row.id, row.status]));
@@ -196,11 +220,14 @@ async function markTaskDoneWithDescendants(taskId) {
   const [updatedCount] = await Task.update(
     { status: "done" },
     {
-      where: {
-        id: {
-          [Op.in]: openIds
-        }
-      }
+      where: withSourceUserFilter(
+        {
+          id: {
+            [Op.in]: openIds
+          }
+        },
+        sourceUserId
+      )
     }
   );
 
@@ -213,14 +240,19 @@ async function markTaskDoneWithDescendants(taskId) {
   };
 }
 
-async function collectDescendantIds(rootId) {
+async function collectDescendantIds(rootId, sourceUserId) {
   const ids = [rootId];
   const queue = [rootId];
   while (queue.length > 0) {
     const current = queue.shift();
     const children = await Task.findAll({
       attributes: ["id"],
-      where: { parentTaskId: current }
+      where: withSourceUserFilter(
+        {
+          parentTaskId: current
+        },
+        sourceUserId
+      )
     });
     for (const child of children) {
       ids.push(child.id);
@@ -230,8 +262,15 @@ async function collectDescendantIds(rootId) {
   return ids;
 }
 
-async function updateTaskWindowBySnooze(taskId, snoozePayload) {
-  const task = await Task.findByPk(taskId);
+async function updateTaskWindowBySnooze(taskId, snoozePayload, sourceUserId) {
+  const task = await Task.findOne({
+    where: withSourceUserFilter(
+      {
+        id: taskId
+      },
+      sourceUserId
+    )
+  });
   if (!task) {
     return null;
   }
@@ -342,17 +381,27 @@ async function markTaskNudged(taskId) {
   await Task.update({ lastNudgedAt: new Date() }, { where: { id: taskId } });
 }
 
-async function getPendingTaskById(taskId) {
+async function getPendingTaskById(taskId, sourceUserId) {
   return Task.findOne({
-    where: {
-      id: taskId,
-      status: "pending"
-    }
+    where: withSourceUserFilter(
+      {
+        id: taskId,
+        status: "pending"
+      },
+      sourceUserId
+    )
   });
 }
 
-async function getTaskById(taskId) {
-  return Task.findByPk(taskId);
+async function getTaskById(taskId, sourceUserId) {
+  return Task.findOne({
+    where: withSourceUserFilter(
+      {
+        id: taskId
+      },
+      sourceUserId
+    )
+  });
 }
 
 module.exports = {
