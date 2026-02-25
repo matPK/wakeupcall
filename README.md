@@ -130,3 +130,37 @@ Storage:
 - `npm run migrate:rollback -- --to 202602210001-create-settings.js`
 - `npm run bot`
 - `npm run runner`
+
+## Docker Compose
+
+This repository now includes:
+
+- `docker-compose.yml`
+- `Dockerfile`
+- `.env.docker.example`
+
+Services in compose:
+
+- `db` (MySQL 8.4)
+- `migrate` (one-shot migration runner)
+- `bot` (Discord ingest process)
+- `runner` (loop that runs `npm run runner` every `RUNNER_INTERVAL_SECONDS`)
+- `portainer` (optional container management UI)
+- `adminer` (optional DB UI)
+
+MySQL root password is randomised by the container (`MYSQL_RANDOM_ROOT_PASSWORD=yes`); use `DB_USER` / `DB_PASSWORD` for the app and Adminer.
+
+### Quick start
+
+1. Copy `.env.docker.example` to `.env` and fill required secrets.
+2. Start core services:
+   - `docker compose up -d --build`
+3. Optional tooling UI:
+   - `docker compose --profile tools up -d`
+
+Useful URLs (when tools profile is enabled):
+
+- Portainer: `http://localhost:9000` (or `https://localhost:9443`)
+- Adminer: `http://localhost:8080`
+
+Note: these ports are bound to `127.0.0.1` in compose for safety. On a VPS, use SSH tunneling or change port bindings if you intentionally want public access.
