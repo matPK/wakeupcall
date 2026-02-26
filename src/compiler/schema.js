@@ -81,7 +81,6 @@ const COMPILER_JSON_SCHEMA = {
           nudge_window_start: { type: "string" },
           nudge_window_end: { anyOf: [{ type: "string" }, { type: "null" }] },
           nudge_text: { type: "string" },
-          memory_context: { anyOf: [{ type: "string" }, { type: "null" }] },
           category: { anyOf: [{ type: "string" }, { type: "null" }] },
           parent_ref: { anyOf: [{ type: "string" }, { type: "null" }] }
         },
