@@ -1,6 +1,14 @@
 const { Op } = require("sequelize");
 const { sequelize, Task } = require("../db/models");
-const { parseIsoToDate, nowUtc, isNowWithinWindow, toDateTimeUtc, addMinutes } = require("../utils/time");
+const {
+  parseIsoToDate,
+  nowUtc,
+  isNowWithinWindow,
+  toDateTimeUtc,
+  addMinutes,
+  addHours,
+  alignToNudgeableStart
+} = require("../utils/time");
 
 function normalizeTaskTitle(inputText) {
   const raw = String(inputText || "")
@@ -71,6 +79,21 @@ function normalizeCategory(input) {
   return slug;
 }
 
+function normalizeTaskType(input) {
+  return String(input || "").trim().toLowerCase() === "routine" ? "routine" : "task";
+}
+
+function normalizeRoutineRepeatHours(input, taskType) {
+  if (taskType !== "routine") {
+    return null;
+  }
+  const parsed = Number(input);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 24;
+  }
+  return Math.max(1, Math.trunc(parsed));
+}
+
 function withSourceUserFilter(where, sourceUserId) {
   if (!sourceUserId) {
     return where;
@@ -135,7 +158,9 @@ async function createTasksFromCompilerOutput(output, messageContext) {
 
 async function createSingleTask({ taskInput, parentTaskId, now, transaction, messageContext }) {
   const startDate = parseIsoToDate(taskInput.nudge_window_start) || now;
-  const endDate = taskInput.nudge_window_end ? parseIsoToDate(taskInput.nudge_window_end) : null;
+  const taskType = normalizeTaskType(taskInput.task_type);
+  const routineRepeatHours = normalizeRoutineRepeatHours(taskInput.routine_repeat_hours, taskType);
+  const endDate = taskType === "routine" ? null : taskInput.nudge_window_end ? parseIsoToDate(taskInput.nudge_window_end) : null;
 
   const createdTask = await Task.create(
     {
@@ -148,6 +173,8 @@ async function createSingleTask({ taskInput, parentTaskId, now, transaction, mes
       nudgeText: taskInput.nudge_text || "",
       memoryContext: normalizeMemoryContext(taskInput.memory_context),
       category: normalizeCategory(taskInput.category),
+      taskType,
+      routineRepeatHours,
       source: "discord",
       sourceMessageId: messageContext.messageId || null,
       sourceChannelId: messageContext.channelId || null,
@@ -404,6 +431,49 @@ async function getTaskById(taskId, sourceUserId) {
   });
 }
 
+async function completeTaskById(taskId, sourceUserId, settings) {
+  const task = await Task.findOne({
+    where: withSourceUserFilter(
+      {
+        id: taskId
+      },
+      sourceUserId
+    )
+  });
+
+  if (!task) {
+    return { found: false };
+  }
+
+  if (task.taskType === "routine") {
+    const repeatHours = normalizeRoutineRepeatHours(task.routineRepeatHours, "routine");
+    const timezone = settings.timezone || "America/Sao_Paulo";
+    const baseNext = addHours(nowUtc(), repeatHours);
+    const alignedNext = alignToNudgeableStart(baseNext, timezone, settings.quiet_hours_start, settings.quiet_hours_end);
+
+    task.status = "pending";
+    task.nudgeWindowStart = alignedNext;
+    task.nudgeWindowEnd = null;
+    task.routineRepeatHours = repeatHours;
+    await task.save();
+
+    return {
+      found: true,
+      routineRescheduled: true,
+      task,
+      repeatHours,
+      nextStart: alignedNext
+    };
+  }
+
+  const doneResult = await markTaskDoneWithDescendants(taskId, sourceUserId);
+  return {
+    found: doneResult.found,
+    routineRescheduled: false,
+    ...doneResult
+  };
+}
+
 module.exports = {
   createTasksFromCompilerOutput,
   listPendingTopLevelTasks,
@@ -412,5 +482,6 @@ module.exports = {
   findNudgableTasks,
   markTaskNudged,
   getPendingTaskById,
-  getTaskById
+  getTaskById,
+  completeTaskById
 };

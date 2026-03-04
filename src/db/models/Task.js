@@ -54,6 +54,17 @@ function initTask(sequelize) {
         type: DataTypes.STRING(64),
         allowNull: true
       },
+      taskType: {
+        type: DataTypes.STRING(16),
+        allowNull: false,
+        defaultValue: "task",
+        field: "task_type"
+      },
+      routineRepeatHours: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        field: "routine_repeat_hours"
+      },
       source: {
         type: DataTypes.STRING(32),
         allowNull: false,

@@ -4,7 +4,7 @@ const { getSettingsMap } = require("../services/settingsService");
 const {
   createTasksFromCompilerOutput,
   listPendingTopLevelTasks,
-  markTaskDoneWithDescendants,
+  completeTaskById,
   updateTaskWindowBySnooze,
   getPendingTaskById,
   getTaskById
@@ -16,6 +16,10 @@ const logger = require("../utils/logger");
 
 const EXPLICIT_MULTI_TASK_CUE = /\b(also|another task|another one|separately|separate task|in addition|additionally|plus)\b/i;
 const CATEGORY_LIKE_MEMORY_CONTEXT = /^[a-z0-9_-]+$/i;
+const ROUTINE_HOURS_PATTERNS = [
+  /\bevery\s+(\d+)\s*h(?:our)?s?\b/i,
+  /\bevery\s+(\d+)\s*hr?s?\b/i
+];
 
 function renderTaskTitle(task) {
   const raw = String(task && task.title ? task.title : "");
@@ -46,6 +50,21 @@ function coerceSingleTopLevelTask(compiled, originalText) {
   return { compiled, coerced: true };
 }
 
+function extractRoutineHours(text) {
+  const content = String(text || "");
+  for (const pattern of ROUTINE_HOURS_PATTERNS) {
+    const match = pattern.exec(content);
+    if (!match) {
+      continue;
+    }
+    const value = Number(match[1]);
+    if (Number.isInteger(value) && value >= 1) {
+      return value;
+    }
+  }
+  return null;
+}
+
 class CommandHandler {
   constructor(inboxProvider) {
     this.inboxProvider = inboxProvider;
@@ -74,6 +93,9 @@ class CommandHandler {
       case "nudge":
         await this.handleNudge(message, parsed.text);
         return;
+      case "routine":
+        await this.handleRoutine(message, parsed.text);
+        return;
       case "snooze":
         await this.handleSnooze(message, parsed.taskId, parsed.text);
         return;
@@ -93,6 +115,7 @@ class CommandHandler {
       "nudge: fix bathroom door this evening",
       "nudge: fix sink next week. need to buy silicone first",
       "nudge: fix sink, also schedule dentist",
+      "routine: remind me to do 10 push ups every 2 hours",
       "snooze: 12 2h",
       "done: 12",
       "explain: 12",
@@ -127,9 +150,19 @@ class CommandHandler {
       return;
     }
 
-    const result = await markTaskDoneWithDescendants(taskId, authorId);
+    const settings = await getSettingsMap();
+    const timezone = settings.timezone || "America/Sao_Paulo";
+    const result = await completeTaskById(taskId, authorId, settings);
     if (!result.found) {
       await this.inboxProvider.reply(channelId, `Task ${taskId} not found.`);
+      return;
+    }
+    if (result.routineRescheduled) {
+      const next = formatWindowForUser(result.nextStart, timezone);
+      await this.inboxProvider.reply(
+        channelId,
+        `Routine [${taskId}] completed. Next nudge at ${next} (${timezone}), repeat every ${result.repeatHours}h.`
+      );
       return;
     }
     if (result.alreadyDone) {
@@ -173,13 +206,21 @@ class CommandHandler {
   }
 
   async handleNudge(message, text) {
+    await this.handleCreateLikeCommand(message, text, "nudge");
+  }
+
+  async handleRoutine(message, text) {
+    await this.handleCreateLikeCommand(message, text, "routine");
+  }
+
+  async handleCreateLikeCommand(message, text, commandType) {
     const settings = await getSettingsMap();
     const timezone = settings.timezone || "America/Sao_Paulo";
 
     let compiled;
     try {
       compiled = await this.compiler.compile({
-        commandType: "nudge",
+        commandType,
         commandText: text,
         settings,
         timezone
@@ -190,11 +231,12 @@ class CommandHandler {
     }
 
     if (compiled.intent === "clarify") {
-      await this.inboxProvider.reply(message.channelId, compiled.clarify_question || "Can you clarify that nudge?");
+      const fallback = commandType === "routine" ? "Can you clarify that routine?" : "Can you clarify that nudge?";
+      await this.inboxProvider.reply(message.channelId, compiled.clarify_question || fallback);
       return;
     }
     if (compiled.intent !== "create") {
-      await this.inboxProvider.reply(message.channelId, "I expected a create intent. Please rephrase your nudge.");
+      await this.inboxProvider.reply(message.channelId, "I expected a create intent. Please rephrase.");
       return;
     }
 
@@ -206,6 +248,28 @@ class CommandHandler {
     const coercion = coerceSingleTopLevelTask(compiled, text);
     compiled = coercion.compiled;
 
+    if (commandType === "routine" && compiled.tasks.length > 0) {
+      const inferredHours = extractRoutineHours(text);
+      const mainTask = compiled.tasks[0];
+      mainTask.task_type = "routine";
+      mainTask.nudge_window_end = null;
+      if (!Number.isInteger(mainTask.routine_repeat_hours) || mainTask.routine_repeat_hours < 1) {
+        mainTask.routine_repeat_hours = inferredHours;
+      }
+      if (!Number.isInteger(mainTask.routine_repeat_hours) || mainTask.routine_repeat_hours < 1) {
+        await this.inboxProvider.reply(
+          message.channelId,
+          "Could not infer routine interval. Try: `routine: ... every 2 hours`."
+        );
+        return;
+      }
+
+      for (let i = 1; i < compiled.tasks.length; i += 1) {
+        compiled.tasks[i].task_type = "task";
+        compiled.tasks[i].routine_repeat_hours = null;
+      }
+    }
+
     const maxSubtasks = Math.max(0, Number(settings.max_subtasks || 3));
     const hardCap = maxSubtasks + 1;
     if (compiled.tasks.length > hardCap) {
@@ -216,7 +280,9 @@ class CommandHandler {
     const created = await createTasksFromCompilerOutput(compiled, message);
     const lines = created.map((task) => {
       const categorySuffix = task.category ? ` {${task.category}}` : "";
-      return `[${task.id}] ${renderTaskTitle(task)}${categorySuffix}`;
+      const routineSuffix =
+        task.taskType === "routine" ? ` <routine/${task.routineRepeatHours || "?"}h>` : "";
+      return `[${task.id}] ${renderTaskTitle(task)}${categorySuffix}${routineSuffix}`;
     });
     const topLevelCount = created.filter((task) => task.parentTaskId === null).length;
     const subtaskCount = created.length - topLevelCount;

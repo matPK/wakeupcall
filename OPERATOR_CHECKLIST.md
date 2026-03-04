@@ -72,6 +72,7 @@ DM commands to the bot from allowlisted accounts:
 - `help`
 - `list`
 - `nudge: ...`
+- `routine: ...`
 - `snooze: <id> ...`
 - `done: <id>`
 - `explain: <id>`

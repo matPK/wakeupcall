@@ -26,6 +26,11 @@ function parseIncomingCommand(text) {
     return { type: "nudge", text: nudgeMatch[1].trim() };
   }
 
+  const routineMatch = /^routine:\s+(.+)$/i.exec(content);
+  if (routineMatch) {
+    return { type: "routine", text: routineMatch[1].trim() };
+  }
+
   const snoozeMatch = /^snooze:\s*(\d+)\s+(.+)$/i.exec(content);
   if (snoozeMatch) {
     return {

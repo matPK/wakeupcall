@@ -7,6 +7,8 @@ const TaskSchema = z
     nudge_window_start: z.string(),
     nudge_window_end: z.string().nullable(),
     nudge_text: z.string(),
+    task_type: z.enum(["task", "routine"]).default("task"),
+    routine_repeat_hours: z.number().int().min(1).nullable().default(null),
     memory_context: z.string().nullable().optional().default(null),
     category: z.string().nullable().default(null),
     parent_ref: z.string().nullable()
@@ -81,6 +83,9 @@ const COMPILER_JSON_SCHEMA = {
           nudge_window_start: { type: "string" },
           nudge_window_end: { anyOf: [{ type: "string" }, { type: "null" }] },
           nudge_text: { type: "string" },
+          task_type: { type: "string", enum: ["task", "routine"] },
+          routine_repeat_hours: { anyOf: [{ type: "integer", minimum: 1 }, { type: "null" }] },
+          memory_context: { anyOf: [{ type: "string" }, { type: "null" }] },
           category: { anyOf: [{ type: "string" }, { type: "null" }] },
           parent_ref: { anyOf: [{ type: "string" }, { type: "null" }] }
         },
@@ -90,6 +95,9 @@ const COMPILER_JSON_SCHEMA = {
           "nudge_window_start",
           "nudge_window_end",
           "nudge_text",
+          "task_type",
+          "routine_repeat_hours",
+          "memory_context",
           "category",
           "parent_ref"
         ]

@@ -23,6 +23,7 @@ Processed commands (case-insensitive):
 - `help`
 - `list`
 - `nudge: <free text>` (AI-backed)
+- `routine: <free text>` (AI-backed): create recurring routine task
 - `snooze: <taskId> <free text>` (AI-backed)
 - `done: <taskId>`
 - `explain: <taskId>` (no AI): return stored `memoryContext` notes for that task
@@ -66,6 +67,8 @@ Seeded defaults:
 - `id` int PK auto increment
 - `parent_task_id` int nullable FK -> `tasks.id` with `ON DELETE CASCADE`
 - `category` varchar(64) nullable (AI-inferred task category, e.g. `chores`, `home-maintenance`)
+- `task_type` varchar(16) not null default `task` (`task|routine`)
+- `routine_repeat_hours` int nullable (used when `task_type=routine`)
 - other fields per spec (`status`, windows, nudge text, metadata, counters, timestamps)
 
 Indexes:
@@ -113,6 +116,7 @@ Storage:
 ## Task completion behavior
 
 - `done: <id>` marks the selected task **and all descendants** as `done`.
+- For `task_type=routine`, `done: <id>` does not close the task. It reschedules `nudge_window_start` to `now + routine_repeat_hours` (shifted to next nudgeable hour if it lands in quiet hours).
 
 ## TaskCompiler contract
 

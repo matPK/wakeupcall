@@ -71,6 +71,36 @@ function addMinutes(dateLike, minutes) {
   return toDateTimeUtc(dateLike).plus({ minutes }).toJSDate();
 }
 
+function addHours(dateLike, hours) {
+  return toDateTimeUtc(dateLike).plus({ hours }).toJSDate();
+}
+
+function alignToNudgeableStart(dateLike, timezone, quietStart, quietEnd) {
+  const start = parseHhMm(quietStart);
+  const end = parseHhMm(quietEnd);
+  const dt = toDateTimeUtc(dateLike).setZone(timezone);
+
+  if (!start || !end || !isInQuietHours(dt, timezone, quietStart, quietEnd)) {
+    return dt.toUTC().toJSDate();
+  }
+
+  const startMinutes = start.hour * 60 + start.minute;
+  const endMinutes = end.hour * 60 + end.minute;
+  const nowMinutes = dt.hour * 60 + dt.minute;
+
+  let localNext = dt.set({ hour: end.hour, minute: end.minute, second: 0, millisecond: 0 });
+  const crossesMidnight = startMinutes > endMinutes;
+
+  if (crossesMidnight && nowMinutes >= startMinutes) {
+    localNext = localNext.plus({ days: 1 });
+  }
+  if (!crossesMidnight && localNext <= dt) {
+    localNext = localNext.plus({ days: 1 });
+  }
+
+  return localNext.toUTC().toJSDate();
+}
+
 function formatWindowForUser(dateLike, timezone) {
   if (!dateLike) {
     return "open";
@@ -87,5 +117,7 @@ module.exports = {
   isNowWithinWindow,
   isInQuietHours,
   addMinutes,
+  addHours,
+  alignToNudgeableStart,
   formatWindowForUser
 };

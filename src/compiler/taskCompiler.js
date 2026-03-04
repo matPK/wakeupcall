@@ -39,18 +39,33 @@ function buildRulesForCommand(commandType) {
         "2) For create intent, task windows must be ISO8601 with timezone.",
         "3) tasks[].nudge_text must include {{id}} token and include done/snooze hint.",
         "4) Never include {{id}} in tasks[].title, only in tasks[].nudge_text.",
-        "5) Respect settings.max_subtasks, do not exceed it.",
-        "6) links[] child_index must reference tasks array index.",
-        "7) Default to a single top-level task unless the user explicitly asks for multiple tasks (e.g. 'also', 'another task', 'separately').",
-        "8) If a sentence looks like a dependency or prerequisite for the main action, model it as a subtask, not another top-level task.",
-        "9) category should be a short lower-kebab-case label describing task domain, or null if unclear.",
-        "10) Prefer reusable practical categories such as chores, home-maintenance, office-maintenance, fatherhood, marriage, health, finance, admin, learning.",
-        "11) Temporal policy: stretch-to-fill. Make execution windows as wide as reasonably possible within user-stated bounds; do not collapse vague periods into short slots.",
-        "12) If user says 'today', set high priority (use 10) and set window end to configured quiet_hours_start of the same local day.",
-        "13) If user says 'this month', set window start to tomorrow 00:00 local time and window end to the last day of current month 23:59:59 local time.",
-        "14) If user says 'next week' without specific day/time, set window to Monday 00:00 through Friday 23:59:59 of next week in local timezone.",
-        "15) Only choose short windows when user gives explicit short constraints.",
-        "16) Do not include secrets."
+        "5) task_type should be 'task' for nudge command.",
+        "6) routine_repeat_hours should be null for non-routine tasks.",
+        "7) Respect settings.max_subtasks, do not exceed it.",
+        "8) links[] child_index must reference tasks array index.",
+        "9) Default to a single top-level task unless the user explicitly asks for multiple tasks (e.g. 'also', 'another task', 'separately').",
+        "10) If a sentence looks like a dependency or prerequisite for the main action, model it as a subtask, not another top-level task.",
+        "11) category should be a short lower-kebab-case label describing task domain, or null if unclear.",
+        "12) Prefer reusable practical categories such as chores, home-maintenance, office-maintenance, fatherhood, marriage, health, finance, admin, learning.",
+        "13) Temporal policy: stretch-to-fill. Make execution windows as wide as reasonably possible within user-stated bounds; do not collapse vague periods into short slots.",
+        "14) If user says 'today', set high priority (use 10) and set window end to configured quiet_hours_start of the same local day.",
+        "15) If user says 'this month', set window start to tomorrow 00:00 local time and window end to the last day of current month 23:59:59 local time.",
+        "16) If user says 'next week' without specific day/time, set window to Monday 00:00 through Friday 23:59:59 of next week in local timezone.",
+        "17) Only choose short windows when user gives explicit short constraints.",
+        "18) Do not include secrets."
+      ];
+    case "routine":
+      return [
+        "1) intent must be create. If user intent is unclear, use intent=clarify and fill clarify_question.",
+        "2) Create a routine task by setting task_type='routine' for the main task.",
+        "3) routine_repeat_hours is required for routine tasks and must be a positive integer (e.g. every 2 hours => 2).",
+        "4) Routine tasks must have nudge_window_end = null (open-ended).",
+        "5) nudge_window_start must be ISO8601 with timezone and should usually be near now unless user requested a later start.",
+        "6) Keep one top-level routine unless user explicitly asks for multiple.",
+        "7) tasks[].nudge_text must include {{id}} token and include done/snooze hint.",
+        "8) category should be a short lower-kebab-case label describing task domain, or null if unclear.",
+        "9) memory_context should be null for trivial routines, or 1-4 short actionable tips when useful.",
+        "10) Do not include secrets."
       ];
     case "snooze":
       return [
