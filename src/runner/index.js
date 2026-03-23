@@ -21,7 +21,7 @@ function resolveNudgeMode(rawValue) {
 
 function buildNudgeMessage(task) {
   const base = String(task.nudgeText || "").trim();
-  const fallback = `Nudge [${task.id}]: ${renderTaskTitle(task)}. Reply: done: ${task.id} | snooze: ${task.id} 2h`;
+  const fallback = `Nudge [${task.id}]: ${renderTaskTitle(task)}. Reply: done: ${task.id} | snooze: ${task.id} 2h | cancel: ${task.id}`;
   const header = base || fallback;
 
   const subtasks = Array.isArray(task.pendingSubtasks) ? task.pendingSubtasks : [];

@@ -16,6 +16,11 @@ function parseIncomingCommand(text) {
     return { type: "done", taskId: Number(doneMatch[1]) };
   }
 
+  const cancelMatch = /^(?:cancel|remove|delete):\s*(\d+)\s*$/i.exec(content);
+  if (cancelMatch) {
+    return { type: "cancel", taskId: Number(cancelMatch[1]) };
+  }
+
   const explainMatch = /^explain:\s*(\d+)\s*$/i.exec(content);
   if (explainMatch) {
     return { type: "explain", taskId: Number(explainMatch[1]) };

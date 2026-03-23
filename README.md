@@ -26,6 +26,7 @@ Processed commands (case-insensitive):
 - `routine: <free text>` (AI-backed): create recurring routine task
 - `snooze: <taskId> <free text>` (AI-backed)
 - `done: <taskId>`
+- `cancel: <taskId>` (aliases: `remove`, `delete`): inactivate task (status -> `archived`) and descendants
 - `explain: <taskId>` (no AI): return stored `memoryContext` notes for that task
 - `config: <free text>` (AI-backed)
 
@@ -117,6 +118,7 @@ Storage:
 
 - `done: <id>` marks the selected task **and all descendants** as `done`.
 - For `task_type=routine`, `done: <id>` does not close the task. It reschedules `nudge_window_start` to `now + routine_repeat_hours` (shifted to next nudgeable hour if it lands in quiet hours).
+- `cancel: <id>` marks the selected task and descendants as `archived` (no further nudges, keeps history).
 
 ## TaskCompiler contract
 

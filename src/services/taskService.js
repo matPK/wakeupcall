@@ -21,15 +21,15 @@ function normalizeTaskTitle(inputText) {
 
 function normalizeNudgeText(inputText, id, title) {
   const base = String(inputText || "").trim().replace(/\{\{\s*id\s*\}\}/gi, String(id));
-  const fallback = `Nudge [${id}]: ${title}. Reply: done: ${id} | snooze: ${id} 2h`;
+  const fallback = `Nudge [${id}]: ${title}. Reply: done: ${id} | snooze: ${id} 2h | cancel: ${id}`;
   if (!base) {
     return fallback;
   }
 
   const hasIdTag = base.includes(`[${id}]`) || base.includes(` ${id}`);
-  const hasHints = /done:\s*\d+/i.test(base) && /snooze:\s*\d+/i.test(base);
+  const hasHints = /done:\s*\d+/i.test(base) && /snooze:\s*\d+/i.test(base) && /cancel:\s*\d+/i.test(base);
   const withId = hasIdTag ? base : `Nudge [${id}]: ${base}`;
-  return hasHints ? withId : `${withId}. Reply: done: ${id} | snooze: ${id} 2h`;
+  return hasHints ? withId : `${withId}. Reply: done: ${id} | snooze: ${id} 2h | cancel: ${id}`;
 }
 
 function buildChildLinkMap(links) {
@@ -267,6 +267,60 @@ async function markTaskDoneWithDescendants(taskId, sourceUserId) {
   };
 }
 
+async function archiveTaskById(taskId, sourceUserId) {
+  const task = await Task.findOne({
+    attributes: ["id"],
+    where: withSourceUserFilter(
+      {
+        id: taskId
+      },
+      sourceUserId
+    )
+  });
+  if (!task) {
+    return { found: false, alreadyArchived: false, updatedCount: 0, ids: [] };
+  }
+
+  const idsToUpdate = await collectDescendantIds(task.id, sourceUserId);
+  const rows = await Task.findAll({
+    attributes: ["id", "status"],
+    where: withSourceUserFilter(
+      {
+        id: {
+          [Op.in]: idsToUpdate
+        }
+      },
+      sourceUserId
+    )
+  });
+
+  const openIds = rows.filter((row) => row.status !== "archived").map((row) => row.id);
+  if (openIds.length === 0) {
+    return { found: true, alreadyArchived: true, updatedCount: 0, ids: idsToUpdate };
+  }
+
+  const [updatedCount] = await Task.update(
+    { status: "archived" },
+    {
+      where: withSourceUserFilter(
+        {
+          id: {
+            [Op.in]: openIds
+          }
+        },
+        sourceUserId
+      )
+    }
+  );
+
+  return {
+    found: true,
+    alreadyArchived: false,
+    updatedCount,
+    ids: idsToUpdate
+  };
+}
+
 async function collectDescendantIds(rootId, sourceUserId) {
   const ids = [rootId];
   const queue = [rootId];
@@ -478,6 +532,7 @@ module.exports = {
   createTasksFromCompilerOutput,
   listPendingTopLevelTasks,
   markTaskDoneWithDescendants,
+  archiveTaskById,
   updateTaskWindowBySnooze,
   findNudgableTasks,
   markTaskNudged,

@@ -5,6 +5,7 @@ const {
   createTasksFromCompilerOutput,
   listPendingTopLevelTasks,
   completeTaskById,
+  archiveTaskById,
   updateTaskWindowBySnooze,
   getPendingTaskById,
   getTaskById
@@ -87,6 +88,9 @@ class CommandHandler {
       case "done":
         await this.handleDone(message.channelId, message.authorId, parsed.taskId);
         return;
+      case "cancel":
+        await this.handleCancel(message.channelId, message.authorId, parsed.taskId);
+        return;
       case "explain":
         await this.handleExplain(message.channelId, message.authorId, parsed.taskId);
         return;
@@ -118,6 +122,7 @@ class CommandHandler {
       "routine: remind me to do 10 push ups every 2 hours",
       "snooze: 12 2h",
       "done: 12",
+      "cancel: 12",
       "explain: 12",
       "config: repeat every 45m and quiet hours 22:30-07:00",
       "config: nudge mode single"
@@ -177,6 +182,28 @@ class CommandHandler {
     await this.inboxProvider.reply(
       channelId,
       `Done [${taskId}] (+${Math.max(0, result.updatedCount - 1)} subtasks). Good job!`
+    );
+  }
+
+  async handleCancel(channelId, authorId, taskId) {
+    if (!Number.isInteger(taskId) || taskId <= 0) {
+      await this.inboxProvider.reply(channelId, "Use: cancel: <taskId>");
+      return;
+    }
+
+    const result = await archiveTaskById(taskId, authorId);
+    if (!result.found) {
+      await this.inboxProvider.reply(channelId, `Task ${taskId} not found.`);
+      return;
+    }
+    if (result.alreadyArchived) {
+      await this.inboxProvider.reply(channelId, `Task [${taskId}] is already canceled.`);
+      return;
+    }
+
+    await this.inboxProvider.reply(
+      channelId,
+      `Canceled [${taskId}] (+${Math.max(0, result.updatedCount - 1)} subtasks).`
     );
   }
 
