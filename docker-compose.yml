@@ -18,6 +18,7 @@ services:
       start_period: 20s
 
   migrate:
+    image: wakeupcall-app:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -33,9 +34,7 @@ services:
     command: ["npm", "run", "migrate"]
 
   bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: wakeupcall-app:latest
     restart: unless-stopped
     init: true
     env_file:
@@ -51,9 +50,7 @@ services:
     command: ["npm", "run", "bot"]
 
   runner:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: wakeupcall-app:latest
     restart: unless-stopped
     init: true
     env_file:
